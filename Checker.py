@@ -22,9 +22,9 @@ def test_proxy(proxy, proxy_type):
             with open('good_proxies.txt', 'a') as f:
                 f.write(proxy + '\n')
         else:
-            print(f"Proxy {proxy} ({proxy_type}) is not working.")
+            print(f"Proxy {proxy} ({proxy_type}) DEAD")
     except:
-        print(f"Proxy {proxy} ({proxy_type}) is not working.")
+        print(f"Proxy {proxy} ({proxy_type}) DEAD")
 
 def proxy_checker():
     check_and_install_dependencies()
@@ -40,24 +40,29 @@ def proxy_checker():
         print("Invalid choice. Please select a valid option.")
         return
 
-    proxies = Queue()
-    with open('proxies.txt', 'r') as f:
-        for line in f:
-            proxies.put(line.strip())
+    proxies_file = input("Drag and drop the proxy list file here: ")
+    try:
+        with open(proxies_file, 'r') as f:
+            proxies = [line.strip() for line in f]
+    except FileNotFoundError:
+        print("Proxy list file not found.")
+        return
 
     def worker():
-        while not proxies.empty():
-            proxy = proxies.get()
+        while proxies:
+            proxy = proxies.pop()
             test_proxy(proxy, proxy_type_str)
-            proxies.task_done()
 
-    num_threads = 50
+    num_threads = 100
+    threads = []
     for _ in range(num_threads):
         thread = threading.Thread(target=worker)
         thread.daemon = True
         thread.start()
+        threads.append(thread)
 
-    proxies.join()
+    for thread in threads:
+        thread.join()
 
 if __name__ == '__main__':
     proxy_checker()
