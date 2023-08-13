@@ -23,12 +23,15 @@ def test_proxy(proxy, proxy_type, output_file):
             with open(output_file, 'a') as f:
                 f.write(proxy + '\n')
         else:
-            print(f"Proxy {proxy} ({proxy_type}) DEAD")
+            print(f"Proxy {proxy} ({proxy_type}) is DEAD")
     except:
-        print(f"Proxy {proxy} ({proxy_type}) DEAD")
+        print(f"Proxy {proxy} ({proxy_type}) is DEAD")
 
 def proxy_checker():
     check_and_install_dependencies()
+
+    print("Proxy Checker")
+    print("-------------\n")
 
     proxy_type = input("Select a proxy type:\n1. HTTP\n2. SOCKS4\n3. SOCKS5\nEnter your choice (1/2/3): ")
     if proxy_type == '1':
@@ -41,7 +44,7 @@ def proxy_checker():
         print("Invalid choice. Please select a valid option.")
         return
 
-    proxies_file = input("Drag and drop the proxy list file here: ")
+    proxies_file = input("\nDrag and drop the proxy list file here: ")
     try:
         with open(proxies_file, 'r') as f:
             proxies = [line.strip() for line in f]
@@ -65,11 +68,14 @@ def proxy_checker():
         thread.start()
         threads.append(thread)
 
+    print("\nChecking proxies...")
+
     for thread in threads:
         thread.join()
 
-    print(f"All proxies have been checked and saved to {output_file}.")
+    print(f"\nAll proxies have been checked and saved to {output_file}.")
 
 if __name__ == '__main__':
+    print("Welcome to Proxy Checker!")
     proxy_checker()
-    input("Press Enter to exit...")
+    input("\nPress Enter to exit...")
