@@ -16,7 +16,7 @@ def test_proxy(proxy, proxy_type):
             'http': f'http://{proxy}',
             'https': f'http://{proxy}',
         }
-        response = requests.get('https://www.google.com', proxies=proxies, timeout=5)
+        response = requests.get('https://www.google.com', proxies=proxies, timeout=10)
         if response.status_code == 200:
             print(f"Proxy {proxy} ({proxy_type}) is working.")
             with open('good_proxies.txt', 'a') as f:
@@ -51,7 +51,7 @@ def proxy_checker():
             test_proxy(proxy, proxy_type_str)
             proxies.task_done()
 
-    num_threads = 10
+    num_threads = 50
     for _ in range(num_threads):
         thread = threading.Thread(target=worker)
         thread.daemon = True
