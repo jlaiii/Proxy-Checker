@@ -30,7 +30,7 @@ This is a Python script that allows you to check the validity of a list of proxi
 ## Notes
 
 - Use this script responsibly and only on websites where you have the right to test proxies.
-- The timeout for checking each proxy is set to 5 seconds. You can adjust this value in the script if needed.
+- The timeout for checking each proxy is set to 10 seconds. You can adjust this value in the script if needed.
 - Proxies that are not working will be displayed in the console as they are checked.
 - Make sure to review the results in the "good_proxies.txt" file after running the script.
 
