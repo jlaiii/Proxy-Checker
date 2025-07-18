@@ -1,5 +1,4 @@
-import requests
-from bs4 import BeautifulSoup
+# Standard library imports (always available)
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
 import queue
@@ -7,11 +6,12 @@ import re
 import sys
 import subprocess
 import os
-import urllib3
 import time
 
-# Disable InsecureRequestWarning messages
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+# Third-party imports will be handled after dependency installation
+requests = None
+BeautifulSoup = None
+urllib3 = None
 
 # ANSI escape codes for colors
 class Colors:
@@ -22,105 +22,65 @@ class Colors:
     BLUE = '\033[94m'
     END = '\033[0m'
 
-# List of proxy sites to scrape
+# List of proxy sites to scrape - Updated with current, active sources
 proxy_sites = [
+    # Popular proxy list websites (still active)
     "https://www.sslproxies.org/",
     "https://www.us-proxy.org/",
     "https://free-proxy-list.net/",
     "https://www.socks-proxy.net/",
-    "https://free-proxy-list.net/uk-proxy.html",
     "https://free-proxy-list.net/anonymous-proxy.html",
-    "https://free-proxy-list.net/high-anonymity.html",
-    "https://free-proxy-list.net/proxy-list-s.html",
-    "https://www.proxy-list.download/api/v1/get?type=http",
-    "https://www.proxy-list.download/api/v1/get?type=https",
-    "https://www.proxy-list.download/api/v1/get?type=socks4",
-    "https://www.proxy-list.download/api/v1/get?type=socks5",
-    "https://geonode.com/free-proxy-list",
-    "https://proxyscrape.com/free-proxy-list",
     "https://www.hidemy.name/en/proxy-list/",
-    "https://www.iplocation.net/proxy-list",
-    "https://www.kproxy.com/",
-    "http://www.gatherproxy.com/proxylist/anonymity/?t=Elite",
-    "http://www.gatherproxy.com/proxylist/country/?c=United%20States",
-    "http://www.proxy-daily.com/",
-    "http://proxygather.com/proxylist/anonymity/",
-    "http://proxygather.com/proxylist/country/United%20States/",
+    
+    # ProxyScrape API (reliable service)
     "https://api.proxyscrape.com/v2/?request=displayproxies&protocol=http&timeout=10000&country=all&ssl=all&anonymity=all",
     "https://api.proxyscrape.com/v2/?request=displayproxies&protocol=socks4&timeout=10000&country=all&ssl=all&anonymity=all",
     "https://api.proxyscrape.com/v2/?request=displayproxies&protocol=socks5&timeout=10000&country=all&ssl=all&anonymity=all",
-    "https://raw.githubusercontent.com/clarketm/proxy-list/master/proxy-list-raw.txt",
-    "https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/http.txt",
-    "https://raw.githubusercontent.com/jetkai/proxy-list/main/online-proxies/txt/proxies-http.txt",
-    "https://raw.githubusercontent.com/jetkai/proxy-list/main/online-proxies/txt/proxies-https.txt",
-    "https://raw.githubusercontent.com/jetkai/proxy-list/main/online-proxies/txt/proxies-socks4.txt",
-    "https://raw.githubusercontent.com/jetkai/proxy-list/main/online-proxies/txt/proxies-socks5.txt",
-    "https://raw.githubusercontent.com/ShiftyTR/Proxy-List/master/http.txt",
-    "https://raw.githubusercontent.com/ShiftyTR/Proxy-List/master/https.txt",
-    "https://raw.githubusercontent.com/ShiftyTR/Proxy-List/master/socks4.txt",
-    "https://raw.githubusercontent.com/ShiftyTR/Proxy-List/master/socks5.txt",
-    "https://raw.githubusercontent.com/fate0/proxylist/master/proxy.list",
-    "https://raw.githubusercontent.com/RXROH/proxy-list/main/online/http.txt",
-    "https://raw.githubusercontent.com/RXROH/proxy-list/main/online/socks4.txt",
-    "https://raw.githubusercontent.com/RXROH/proxy-list/main/online/socks5.txt",
-    "https://raw.githubusercontent.com/mmpx12/proxy-list/master/http.txt",
-    "https://raw.githubusercontent.com/mmpx12/proxy-list/master/https.txt",
-    "https://raw.githubusercontent.com/mmpx12/proxy-list/master/socks4.txt",
-    "https://raw.githubusercontent.com/mmpx12/proxy-list/master/socks5.txt",
-    "https://raw.githubusercontent.com/zevtyardt/proxy-list/main/http.txt",
-    "https://raw.githubusercontent.com/zevtyardt/proxy-list/main/https.txt",
-    "https://raw.githubusercontent.com/zevtyardt/proxy-list/main/socks4.txt",
-    "https://raw.githubusercontent.com/zevtyardt/proxy-list/main/socks5.txt",
-    "https://raw.githubusercontent.com/mertguvench/http-proxy-list/main/proxy-list/data.txt",
-    "https://raw.githubusercontent.com/saisuiu/free-proxies/main/socks4.txt",
-    "https://raw.githubusercontent.com/saisuiu/free-proxies/main/socks5.txt",
-    "https://raw.githubusercontent.com/a2u/free-proxy-list/master/proxy-list.txt",
-    "https://raw.githubusercontent.com/opsxcq/proxy-list/master/list.txt",
-    "https://raw.githubusercontent.com/rdavydov/proxy-list/main/proxies.txt",
-    "https://raw.githubusercontent.com/jetkai/proxy-list/main/online-proxies/txt/proxies-all.txt",
-    "https://raw.githubusercontent.com/hanwaytech/proxy-list/main/proxy.txt",
-    "https://raw.githubusercontent.com/Ebenezerrd/proxy-list/main/proxy-list.txt",
-    "https://raw.githubusercontent.com/officialputuid/KangProxy/KangProxy/http/http.txt",
-    "https://raw.githubusercontent.com/officialputuid/KangProxy/KangProxy/socks4/socks4.txt",
-    "https://raw.githubusercontent.com/officialputuid/KangProxy/KangProxy/socks5/socks5.txt",
-    "https://raw.githubusercontent.com/officialputuid/KangProxy/KangProxy/https/https.txt",
-    "https://raw.githubusercontent.com/HyperBeats/proxy-list/main/http.txt",
-    "https://raw.githubusercontent.com/HyperBeats/proxy-list/main/https.txt",
-    "https://raw.githubusercontent.com/HyperBeats/proxy-list/main/socks4.txt",
-    "https://raw.githubusercontent.com/HyperBeats/proxy-list/main/socks5.txt",
-    "https://raw.githubusercontent.com/zloi-user/hideip.me/main/http.txt",
-    "https://raw.githubusercontent.com/zloi-user/hideip.me/main/https.txt",
-    "https://raw.githubusercontent.com/zloi-user/hideip.me/main/socks4.txt",
-    "https://raw.githubusercontent.com/zloi-user/hideip.me/main/socks5.txt",
-    "https://raw.githubusercontent.com/ALIILAPRO/Proxy/main/http.txt",
-    "https://raw.githubusercontent.com/ALIILAPRO/Proxy/main/https.txt",
-    "https://raw.githubusercontent.com/ALIILAPRO/Proxy/main/socks4.txt",
-    "https://raw.githubusercontent.com/ALIILAPRO/Proxy/main/socks5.txt",
-    "https://raw.githubusercontent.com/proxiesmaster/Free-Proxy-List/main/http.txt",
-    "https://raw.githubusercontent.com/proxiesmaster/Free-Proxy-List/main/https.txt",
-    "https://raw.githubusercontent.com/proxiesmaster/Free-Proxy-List/main/socks4.txt",
-    "https://raw.githubusercontent.com/proxiesmaster/Free-Proxy-List/main/socks5.txt",
-    "https://raw.githubusercontent.com/rosemarycai/proxy-list/main/http.txt",
-    "https://raw.githubusercontent.com/rosemarycai/proxy-list/main/socks4.txt",
-    "https://raw.githubusercontent.com/rosemarycai/proxy-list/main/socks5.txt",
-    "https://raw.githubusercontent.com/almightyspiff/proxy-list/main/https.txt",
-    "https://raw.githubusercontent.com/almightyspiff/proxy-list/main/http.txt",
-    "https://raw.githubusercontent.com/almightyspiff/proxy-list/main/socks4.txt",
-    "https://raw.githubusercontent.com/almightyspiff/proxy-list/main/socks5.txt",
-    "https://raw.githubusercontent.com/HyperBeats/proxy-list/main/all.txt",
-    "https://raw.githubusercontent.com/hookzof/socks5_list/master/proxy.txt",
+    
+    # Active GitHub repositories (regularly updated)
     "https://raw.githubusercontent.com/monosans/proxy-list/main/proxies/http.txt",
     "https://raw.githubusercontent.com/monosans/proxy-list/main/proxies/socks4.txt",
     "https://raw.githubusercontent.com/monosans/proxy-list/main/proxies/socks5.txt",
-    "https://raw.githubusercontent.com/sunny9577/proxies/main/proxies.txt",
+    "https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/http.txt",
+    "https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/socks4.txt",
+    "https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/socks5.txt",
+    "https://raw.githubusercontent.com/jetkai/proxy-list/main/online-proxies/txt/proxies-http.txt",
+    "https://raw.githubusercontent.com/jetkai/proxy-list/main/online-proxies/txt/proxies-socks4.txt",
+    "https://raw.githubusercontent.com/jetkai/proxy-list/main/online-proxies/txt/proxies-socks5.txt",
+    "https://raw.githubusercontent.com/mmpx12/proxy-list/master/http.txt",
+    "https://raw.githubusercontent.com/mmpx12/proxy-list/master/socks4.txt",
+    "https://raw.githubusercontent.com/mmpx12/proxy-list/master/socks5.txt",
+    "https://raw.githubusercontent.com/roosterkid/openproxylist/main/HTTPS_RAW.txt",
+    "https://raw.githubusercontent.com/roosterkid/openproxylist/main/SOCKS4_RAW.txt",
+    "https://raw.githubusercontent.com/roosterkid/openproxylist/main/SOCKS5_RAW.txt",
+    "https://raw.githubusercontent.com/sunny9577/proxy-scraper/master/proxies.txt",
+    "https://raw.githubusercontent.com/ShiftyTR/Proxy-List/master/http.txt",
+    "https://raw.githubusercontent.com/ShiftyTR/Proxy-List/master/socks4.txt",
+    "https://raw.githubusercontent.com/ShiftyTR/Proxy-List/master/socks5.txt",
+    "https://raw.githubusercontent.com/clarketm/proxy-list/master/proxy-list-raw.txt",
+    "https://raw.githubusercontent.com/rdavydov/proxy-list/main/proxies.txt",
+    "https://raw.githubusercontent.com/rdavydov/proxy-list/main/proxies_anonymous.txt",
+    "https://raw.githubusercontent.com/ALIILAPRO/Proxy/main/http.txt",
+    "https://raw.githubusercontent.com/ALIILAPRO/Proxy/main/socks4.txt",
+    "https://raw.githubusercontent.com/ALIILAPRO/Proxy/main/socks5.txt",
+    "https://raw.githubusercontent.com/prxchk/proxy-list/main/http.txt",
+    "https://raw.githubusercontent.com/prxchk/proxy-list/main/socks4.txt",
+    "https://raw.githubusercontent.com/prxchk/proxy-list/main/socks5.txt",
+    "https://raw.githubusercontent.com/proxy4parsing/proxy-list/main/http.txt",
+    "https://raw.githubusercontent.com/Anonym0usWork1221/Free-Proxy-List/main/proxy.txt",
     "https://raw.githubusercontent.com/UptimerBot/proxy-list/main/proxies/http.txt",
     "https://raw.githubusercontent.com/UptimerBot/proxy-list/main/proxies/socks4.txt",
     "https://raw.githubusercontent.com/UptimerBot/proxy-list/main/proxies/socks5.txt",
-    "https://raw.githubusercontent.com/Anonym0usWork1221/Free-Proxy-List/main/proxy.txt",
-    "https://raw.githubusercontent.com/TuanMinh1/proxy/main/proxy.txt",
-    "https://raw.githubusercontent.com/hendrikbgr/Free-Proxy-Lists/main/all_proxy.txt",
-    "https://raw.githubusercontent.com/mertguvench/http-proxy-list/main/proxy-list/data.txt",
-    "https://raw.githubusercontent.com/zevtyardt/proxy-list/main/all.txt"
+    "https://raw.githubusercontent.com/hookzof/socks5_list/master/proxy.txt",
+    "https://raw.githubusercontent.com/yemixzy/proxy-list/main/proxies/http.txt",
+    "https://raw.githubusercontent.com/yemixzy/proxy-list/main/proxies/socks4.txt",
+    "https://raw.githubusercontent.com/yemixzy/proxy-list/main/proxies/socks5.txt",
+    "https://raw.githubusercontent.com/Zaeem20/FREE_PROXIES_LIST/master/http.txt",
+    "https://raw.githubusercontent.com/Zaeem20/FREE_PROXIES_LIST/master/socks4.txt",
+    "https://raw.githubusercontent.com/Zaeem20/FREE_PROXIES_LIST/master/socks5.txt",
+    "https://raw.githubusercontent.com/elliottophellia/yakumo/master/results/http/global/http_checked.txt",
+    "https://raw.githubusercontent.com/elliottophellia/yakumo/master/results/socks4/global/socks4_checked.txt",
+    "https://raw.githubusercontent.com/elliottophellia/yakumo/master/results/socks5/global/socks5_checked.txt"
 ]
 
 # Target URL to ping through proxies
@@ -168,33 +128,69 @@ def clear_screen():
 def install_dependencies():
     """
     Automatically checks for and installs required Python packages using pip.
-    Provides concise output.
+    Provides concise output and handles all dependencies.
     """
     print(f"{Colors.CYAN}Checking and installing required packages...{Colors.END}")
-    required_packages = ["requests", "beautifulsoup4"]
-    all_installed = True
-    for package in required_packages:
+    
+    # Map import names to pip package names
+    required_packages = {
+        "requests": "requests",
+        "bs4": "beautifulsoup4", 
+        "urllib3": "urllib3"
+    }
+    
+    packages_to_install = []
+    
+    # Check which packages are missing
+    for import_name, pip_name in required_packages.items():
         try:
-            __import__(package)
+            __import__(import_name)
         except ImportError:
-            all_installed = False
-            print(f"  Installing {package}...")
-            try:
-                subprocess.check_call([sys.executable, "-m", "pip", "install", package],
-                                      stdout=subprocess.DEVNULL,
-                                      stderr=subprocess.DEVNULL)
-                print(f"  {Colors.GREEN}{package} installed.{Colors.END}")
-            except subprocess.CalledProcessError as e:
-                print(f"{Colors.RED}Error installing {package}: {e}{Colors.END}")
-                print(f"Please install {package} manually using: pip install {package}")
-                sys.exit(1)
-            except Exception as e:
-                print(f"{Colors.RED}An unexpected error occurred during installation of {package}: {e}{Colors.END}")
-                sys.exit(1)
-    if all_installed:
+            packages_to_install.append(pip_name)
+    
+    if not packages_to_install:
         print(f"{Colors.GREEN}All required dependencies are already installed.{Colors.END}")
-    else:
-        print(f"{Colors.CYAN}Dependency check and installation complete.{Colors.END}")
+        return
+    
+    # Install missing packages
+    print(f"  Installing {len(packages_to_install)} missing package(s)...")
+    for package in packages_to_install:
+        print(f"  Installing {package}...")
+        try:
+            subprocess.check_call([sys.executable, "-m", "pip", "install", package],
+                                  stdout=subprocess.DEVNULL,
+                                  stderr=subprocess.DEVNULL)
+            print(f"  {Colors.GREEN}{package} installed successfully.{Colors.END}")
+        except subprocess.CalledProcessError as e:
+            print(f"{Colors.RED}Error installing {package}: {e}{Colors.END}")
+            print(f"Please install {package} manually using: pip install {package}")
+            sys.exit(1)
+        except Exception as e:
+            print(f"{Colors.RED}An unexpected error occurred during installation of {package}: {e}{Colors.END}")
+            sys.exit(1)
+    
+    print(f"{Colors.GREEN}All dependencies installed successfully!{Colors.END}")
+    print(f"{Colors.CYAN}Dependency check and installation complete.{Colors.END}")
+
+
+def import_dependencies():
+    """
+    Import the required third-party libraries after ensuring they're installed.
+    """
+    global requests, BeautifulSoup, urllib3
+    
+    try:
+        import requests
+        from bs4 import BeautifulSoup
+        import urllib3
+        
+        # Disable InsecureRequestWarning messages
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+        
+    except ImportError as e:
+        print(f"{Colors.RED}Failed to import required dependencies: {e}{Colors.END}")
+        print(f"{Colors.RED}Please try running the script again or install manually with: pip install requests beautifulsoup4 urllib3{Colors.END}")
+        sys.exit(1)
 
 
 def _scrape_single_site(url):
@@ -584,6 +580,7 @@ def perform_checking_flow():
 
 if __name__ == "__main__":
     install_dependencies()
+    import_dependencies()
     clear_screen()
     print(f"{Colors.CYAN}Starting automatic proxy scraping and checking process...{Colors.END}")
     perform_scraping_flow()
